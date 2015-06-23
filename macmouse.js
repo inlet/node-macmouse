@@ -301,32 +301,48 @@ var keycodeFromString = function(keyString) {
  * Desc:   Sends keyboard event to hold down one or more of the command and shift key, press a key and release the modifiers again
  * Before: mouse is an initialized macmouse
  * After:  keyboard event has been sent to hold down the command and/or shift key, press a key and release the modifiers
+ * @see http://stackoverflow.com/questions/10734349/simulate-keypress-for-system-wide-hotkeys
  */
 var modifierKey = function(key, shift, cmd) {
     var flags;
+    var option_key;
+
     if(cmd) {
-        flags = flags | $.kCGEventFlagMaskCommand;
+        flags = $.kCGEventFlagMaskCommand;
+        option_key = 0x37;
     }
     if(shift) {
-        flags = flags | $.kCGEventFlagMaskShift;
+        flags = $.kCGEventFlagMaskShift;
+        option_key = 0x38;
     }
 
     var src = $.CGEventSourceCreate($.kCGEventSourceStateHIDSystemState);
 
     var keycode = keycodeFromString(key);
 
-    var evt = $.CGEventCreateKeyboardEvent(src, keycode, true);
-    $.CGEventSetFlags(evt, flags | $.CGEventGetFlags(evt));
-    $.CGEventPost($.kCGHIDEventTap, evt);
-    $.CFRelease(evt);
+    var option_down = $.CGEventCreateKeyboardEvent(src, option_key, true);
+    var option_up   = $.CGEventCreateKeyboardEvent(src, option_key, false);
+    var key_down    = $.CGEventCreateKeyboardEvent(src, keycode, true);
+    var key_up      = $.CGEventCreateKeyboardEvent(src, keycode, false);
 
-    evt = $.CGEventCreateKeyboardEvent(src, keycode, false);
-    $.CGEventSetFlags(evt, flags | $.CGEventGetFlags(evt));
-    $.CGEventPost($.kCGHIDEventTap, evt);
-    $.CFRelease(evt);
+    // set flags
+    $.CGEventSetFlags(key_down, flags);
+    $.CGEventSetFlags(key_up,   flags);
 
+    var loc = $.kCGHIDEventTap;
+
+    $.CGEventPost(loc, option_down);
+    $.CGEventPost(loc, key_down);
+    $.CGEventPost(loc, key_up);
+    $.CGEventPost(loc, option_up);
+
+    $.CFRelease(option_down);
+    $.CFRelease(option_up);
+    $.CFRelease(key_down);
+    $.CFRelease(key_up);
     $.CFRelease(src);
 }
+
 /**
  * Usage:  mouse.cmdKey();
  * Desc:   Sends keyboard event to hold down the command key, press a key and release the command key
